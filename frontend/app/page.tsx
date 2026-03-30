@@ -93,7 +93,7 @@ export default function Home() {
               type="text"
               value={key}
               onChange={(e) => setKey(e.target.value.toUpperCase())}
-              placeholder="MW??????"
+              placeholder=""
               maxLength={8}
               className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3.5 text-center text-lg font-mono tracking-widest focus:outline-none focus:border-[#10b981]/50 transition placeholder:text-white/20"
               onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
@@ -110,7 +110,7 @@ export default function Home() {
             </button>
           </div>
           <p className="text-xs text-white/30 mt-3 text-center">
-            noteで購入したキーを入力してください
+            アクセスキーを入力してください
           </p>
         </div>
       </section>
