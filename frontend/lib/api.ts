@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://mrwide-api.onrender.com";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://bot.dlogicai.in/wide";
 
 export interface VenueInfo {
   venue: string;
