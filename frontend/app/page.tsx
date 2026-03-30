@@ -79,7 +79,7 @@ export default function Home() {
           </span>
         </h1>
         <p className="text-base sm:text-lg text-white/50 text-center max-w-xl leading-relaxed mt-4">
-          4つのAIエンジンが全馬を0〜100で指数化。上位馬の組み合わせから
+          TornadoAIエンジンが全馬を0〜100で指数化。上位馬の組み合わせから
           鉄板・準鉄板・妙味のワイド推奨を毎日お届けします。
         </p>
       </section>
@@ -145,13 +145,17 @@ export default function Home() {
             <h2 className="text-lg font-black">Wide指数とは</h2>
           </div>
           <p className="text-sm text-white/50 leading-relaxed mb-5">
-            MetaLogic・Ilogic・Dlogic・ViewLogicの4エンジンが算出した予測を独自の重み付けで統合。
+            TornadoAIエンジンが算出した予測を独自の重み付けで統合。
             各馬の3着以内に入る可能性を0〜100のスコアで表します。
           </p>
           <div className="space-y-3">
             <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
               <span className="text-sm text-white/50">分析エンジン</span>
-              <span className="text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">4基搭載</span>
+              <span className="text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">TornadoAI 4基搭載</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
+              <span className="text-sm text-white/50">上位5頭 → 3着以内</span>
+              <span className="text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">理論複勝率 約60%</span>
             </div>
             <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
               <span className="text-sm text-white/50">ワイド推奨</span>
@@ -162,6 +166,9 @@ export default function Home() {
               <span className="text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">地方競馬 毎日全レース</span>
             </div>
           </div>
+          <p className="text-[11px] text-white/25 mt-4 leading-relaxed">
+            ※ 理論複勝率はTornadoAIエンジンの地方競馬過去データに基づく統計値です。将来の的中を保証するものではありません。
+          </p>
         </div>
       </section>
 
