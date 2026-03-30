@@ -105,12 +105,12 @@ def call_prediction_api(race: dict, api_url: str) -> dict | None:
         return None
 
 
-def calculate_wide_index(prediction_data: dict, num_horses: int) -> list[dict]:
+def calculate_wide_index(prediction_data: dict, num_horses: int, horse_numbers: list) -> list[dict]:
     """4エンジンの予測結果からWide指数を算出
 
     Returns: [{horse_number, wide_index, rank}, ...] sorted by wide_index desc
     """
-    scores = {}
+    scores = {hn: 0.0 for hn in horse_numbers}
 
     for engine, weight in ENGINE_WEIGHTS.items():
         rankings = prediction_data.get(engine, [])
@@ -131,7 +131,7 @@ def calculate_wide_index(prediction_data: dict, num_horses: int) -> list[dict]:
     result = []
     for horse_num, raw_score in scores.items():
         wide_index = round(raw_score / max_possible * 100)
-        wide_index = min(99, max(1, wide_index))
+        wide_index = max(1, min(99, wide_index))
         result.append({
             "horse_number": horse_num,
             "wide_index": wide_index,
@@ -224,7 +224,7 @@ def process_venue(venue: str, races: list[dict], api_url: str) -> dict:
             logger.warning(f"    Skipped: API error")
             continue
 
-        indexed = calculate_wide_index(prediction, num_horses)
+        indexed = calculate_wide_index(prediction, num_horses, horse_numbers)
 
         # 馬名をマッピング
         name_map = {num: name for num, name in zip(horse_numbers, horses)}
