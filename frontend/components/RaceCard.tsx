@@ -118,12 +118,22 @@ export default function RaceCard({ race }: { race: RaceData }) {
               全馬の指数を見る ({race.num_horses}頭)
             </summary>
             <div className="mt-2 space-y-1">
-              {race.horses.slice(5).map((h) => (
-                <div key={h.horse_number} className="flex items-center gap-3 text-xs text-[#a0a0a0]">
-                  <span className="w-6 text-right">{h.rank}</span>
-                  <span className="font-mono w-8 text-center">{h.horse_number}</span>
+              {race.horses.map((h) => (
+                <div key={h.horse_number} className={`flex items-center gap-3 ${h.rank <= 5 ? "text-sm" : "text-xs text-[#a0a0a0]"}`}>
+                  <span className={`w-6 text-right font-bold ${
+                    h.rank === 1 ? "text-[#f5a623]" :
+                    h.rank === 2 ? "text-[#c0c0c0]" :
+                    h.rank === 3 ? "text-[#cd7f32]" :
+                    h.rank <= 5 ? "text-white" :
+                    "text-[#a0a0a0]"
+                  }`}>
+                    {h.rank}
+                  </span>
+                  <span className="bg-[#0a0a0a] font-mono w-8 text-center rounded py-0.5 text-xs">
+                    {h.horse_number}
+                  </span>
                   <span className="flex-1 truncate">{h.horse_name}</span>
-                  <span className="w-8 text-right">{h.wide_index}</span>
+                  <span className={`w-8 text-right font-bold ${h.rank <= 5 ? "" : "font-normal"}`}>{h.wide_index}</span>
                   <IndexBar value={h.wide_index} />
                 </div>
               ))}
