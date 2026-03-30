@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { unlockWithKey, getLineLoginUrl, isLoggedIn, VenueData } from "@/lib/api";
 import RaceCard from "@/components/RaceCard";
+import SupportForm from "@/components/SupportForm";
 
 function UnlockContent() {
   const searchParams = useSearchParams();
@@ -148,6 +149,8 @@ function UnlockContent() {
             <RaceCard key={race.race_id} race={race} />
           ))}
         </div>
+
+        <SupportForm />
 
         <div className="text-center mt-10 text-xs text-white/20">
           <p>AI指数は参考情報です。投票は自己責任でお願いします。</p>

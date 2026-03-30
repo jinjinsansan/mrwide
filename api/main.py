@@ -20,15 +20,17 @@ import os
 import glob
 import secrets
 import hashlib
+import threading
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import httpx
-from fastapi import FastAPI, HTTPException, Header
+import requests as sync_requests
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-app = FastAPI(title="Mr.Wide API", version="2.0.0")
+app = FastAPI(title="Mr.Wide API", version="2.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,15 +45,24 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data'
 LINE_CHANNEL_ID = os.environ.get("LINE_CHANNEL_ID", "")
 LINE_CHANNEL_SECRET = os.environ.get("LINE_CHANNEL_SECRET", "")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://mrwide.vercel.app")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 # Supabase (optional, falls back to file-based)
 SUPABASE_URL = os.environ.get("MRWIDE_SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("MRWIDE_SUPABASE_KEY", "")
+
+JST = timezone(timedelta(hours=9))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # In-memory session store (token -> user_info)
 _sessions: dict[str, dict] = {}
+
+# Support ticket store (in-memory + file)
+_ticket_seq = 0
+_ticket_seq_lock = threading.Lock()
 
 
 # --- Helpers ---
@@ -343,6 +354,172 @@ def unlock(req: UnlockRequest, authorization: str | None = Header(default=None))
         date=date,
         data=safe_data,
     )
+
+
+# --- Support Ticket System ---
+
+TICKETS_PATH = os.path.join(DATA_DIR, "support_tickets.json")
+REPLIES_PATH = os.path.join(DATA_DIR, "support_replies.json")
+
+
+def _load_tickets() -> dict:
+    if os.path.exists(TICKETS_PATH):
+        with open(TICKETS_PATH, 'r') as f:
+            return json.load(f)
+    return {"seq": 0, "tickets": {}}
+
+
+def _save_tickets(data: dict):
+    with open(TICKETS_PATH, 'w') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _load_replies() -> dict:
+    if os.path.exists(REPLIES_PATH):
+        with open(REPLIES_PATH, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+def _save_replies(data: dict):
+    with open(REPLIES_PATH, 'w') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _telegram_send(text: str) -> bool:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        logger.warning("Telegram credentials not configured")
+        return False
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        resp = sync_requests.post(url, json={
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }, timeout=20)
+        return resp.status_code == 200
+    except Exception as e:
+        logger.error(f"Telegram send error: {e}")
+        return False
+
+
+class TicketRequest(BaseModel):
+    message: str
+    page: str = ""
+
+
+@app.post("/api/support/tickets")
+def create_ticket(req: TicketRequest, authorization: str | None = Header(default=None)):
+    """お問い合わせチケット作成 → Telegram通知"""
+    user = _get_user_from_token(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="認証が必要です")
+
+    message = req.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="メッセージが必要です")
+    if len(message) > 2000:
+        raise HTTPException(status_code=400, detail="メッセージが長すぎます")
+
+    data = _load_tickets()
+    data["seq"] = data.get("seq", 0) + 1
+    tid = data["seq"]
+
+    ticket = {
+        "id": tid,
+        "line_user_id": user["line_user_id"],
+        "display_name": user["display_name"],
+        "status": "open",
+        "message": message,
+        "page": req.page,
+        "created_at": datetime.now(JST).isoformat(),
+    }
+    data["tickets"][str(tid)] = ticket
+    _save_tickets(data)
+
+    name = user["display_name"]
+    tg_text = (
+        f"📩 <b>[Mr.Wide] 新規お問い合わせ</b>\n"
+        f"ticket: <b>#{tid}</b>\n"
+        f"user: {name}\n"
+        f"page: <code>{req.page or '-'}</code>\n"
+        f"\n<b>内容</b>\n{message}\n"
+        f"\n<b>返信コマンド</b>\n<code>/resolve {tid} 返信内容...</code>"
+    )
+    sent = _telegram_send(tg_text)
+    logger.info(f"Ticket #{tid} created by {name}, telegram={sent}")
+
+    return {"ticket_id": tid, "sent": sent}
+
+
+@app.get("/api/support/replies")
+def get_replies(authorization: str | None = Header(default=None)):
+    """ユーザーへの返信を取得（ポーリング）"""
+    user = _get_user_from_token(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="認証が必要です")
+
+    uid = user["line_user_id"]
+    replies_data = _load_replies()
+    items = replies_data.pop(uid, [])
+    if items:
+        _save_replies(replies_data)
+    return {"replies": items, "count": len(items)}
+
+
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(request: Request):
+    """Telegramからの /resolve コマンドを受信"""
+    if TELEGRAM_WEBHOOK_SECRET:
+        got = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if got != TELEGRAM_WEBHOOK_SECRET:
+            raise HTTPException(status_code=403, detail="forbidden")
+
+    update = await request.json()
+    msg = (update.get("message") or {}).get("text") or ""
+    msg = str(msg).strip()
+    if not msg:
+        return {"ok": True}
+
+    if msg.startswith("/resolve"):
+        parts = msg.split(maxsplit=2)
+        if len(parts) < 3:
+            return {"ok": True, "error": "usage: /resolve <id> <text>"}
+        try:
+            tid = int(parts[1])
+        except Exception:
+            return {"ok": True, "error": "invalid id"}
+
+        reply_text = parts[2].strip()
+        data = _load_tickets()
+        ticket = data.get("tickets", {}).get(str(tid))
+        if not ticket:
+            return {"ok": True, "error": "ticket not found"}
+
+        uid = ticket.get("line_user_id", "")
+
+        # Save reply for user polling
+        replies_data = _load_replies()
+        if uid not in replies_data:
+            replies_data[uid] = []
+        replies_data[uid].append({
+            "ticket_id": tid,
+            "text": reply_text,
+            "resolved_at": datetime.now(JST).isoformat(),
+        })
+        _save_replies(replies_data)
+
+        ticket["status"] = "resolved"
+        ticket["resolved_at"] = datetime.now(JST).isoformat()
+        _save_tickets(data)
+
+        _telegram_send(f"✅ [Mr.Wide] #{tid} resolved")
+        logger.info(f"Ticket #{tid} resolved")
+
+        return {"ok": True}
+
+    return {"ok": True}
 
 
 if __name__ == "__main__":
