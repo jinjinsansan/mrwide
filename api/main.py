@@ -48,6 +48,7 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://mrwide.vercel.app")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+LINE_MESSAGING_TOKEN = os.environ.get("LINE_MESSAGING_TOKEN", "")
 # Supabase (optional, falls back to file-based)
 SUPABASE_URL = os.environ.get("MRWIDE_SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("MRWIDE_SUPABASE_KEY", "")
@@ -404,6 +405,28 @@ def _telegram_send(text: str) -> bool:
         return False
 
 
+def _line_push(line_user_id: str, text: str) -> bool:
+    if not LINE_MESSAGING_TOKEN or not line_user_id:
+        return False
+    try:
+        resp = sync_requests.post(
+            "https://api.line.me/v2/bot/message/push",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {LINE_MESSAGING_TOKEN}",
+            },
+            json={
+                "to": line_user_id,
+                "messages": [{"type": "text", "text": text}],
+            },
+            timeout=20,
+        )
+        return resp.status_code == 200
+    except Exception as e:
+        logger.error(f"LINE push error: {e}")
+        return False
+
+
 class TicketRequest(BaseModel):
     message: str
     page: str = ""
@@ -514,8 +537,12 @@ async def telegram_webhook(request: Request):
         ticket["resolved_at"] = datetime.now(JST).isoformat()
         _save_tickets(data)
 
-        _telegram_send(f"✅ [Mr.Wide] #{tid} resolved")
-        logger.info(f"Ticket #{tid} resolved")
+        # LINE push to user
+        line_msg = f"【Mr.Wide サポート】\nお問い合わせ #{tid} への回答:\n\n{reply_text}"
+        line_sent = _line_push(uid, line_msg)
+
+        _telegram_send(f"✅ [Mr.Wide] #{tid} resolved (LINE通知: {'OK' if line_sent else 'FAIL'})")
+        logger.info(f"Ticket #{tid} resolved, LINE push={line_sent}")
 
         return {"ok": True}
 
