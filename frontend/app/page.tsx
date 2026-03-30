@@ -69,26 +69,26 @@ export default function Home() {
               <span className="bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">Mr.</span>Wide
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {authChecked && user ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 {user.picture_url && (
-                  <img src={user.picture_url} alt="" className="w-7 h-7 rounded-full" />
+                  <img src={user.picture_url} alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full shrink-0" />
                 )}
-                <span className="text-xs text-white/50">{user.display_name}</span>
-                <button onClick={handleLogout} className="text-xs text-white/30 hover:text-white transition ml-1">
+                <span className="text-[10px] sm:text-xs text-white/50 truncate max-w-[60px] sm:max-w-[100px]">{user.display_name}</span>
+                <button onClick={handleLogout} className="text-[10px] sm:text-xs text-white/30 hover:text-white transition shrink-0">
                   ログアウト
                 </button>
               </div>
             ) : authChecked ? (
               <button
                 onClick={handleLineLogin}
-                className="text-xs px-3 py-1.5 rounded-full bg-[#06C755] text-white font-bold hover:opacity-90 transition"
+                className="text-[10px] sm:text-xs px-2.5 sm:px-3 py-1.5 rounded-full bg-[#06C755] text-white font-bold hover:opacity-90 transition shrink-0"
               >
-                LINEでログイン
+                LINEログイン
               </button>
             ) : null}
-            <a href="https://www.tornadeai.com" target="_blank" rel="noopener noreferrer" className="text-xs text-white/30 hover:text-white transition">
+            <a href="https://www.tornadeai.com" target="_blank" rel="noopener noreferrer" className="hidden sm:inline text-xs text-white/30 hover:text-white transition shrink-0">
               TornadoAI
             </a>
           </div>
@@ -114,9 +114,9 @@ export default function Home() {
       </section>
 
       {/* Key Input */}
-      <section className="max-w-md mx-auto px-6 mb-8">
-        <div className="rounded-2xl border-2 border-[#10b981]/20 bg-[#10b981]/[0.03] p-6 backdrop-blur-sm">
-          <h2 className="text-lg font-black text-center mb-4">閲覧キーを入力</h2>
+      <section className="max-w-md mx-auto px-4 sm:px-6 mb-8">
+        <div className="rounded-2xl border-2 border-[#10b981]/20 bg-[#10b981]/[0.03] p-4 sm:p-6 backdrop-blur-sm">
+          <h2 className="text-base sm:text-lg font-black text-center mb-4">閲覧キーを入力</h2>
           <div className="flex gap-2">
             <input
               type="text"
@@ -124,12 +124,12 @@ export default function Home() {
               onChange={(e) => setKey(e.target.value.toUpperCase())}
               placeholder=""
               maxLength={8}
-              className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3.5 text-center text-lg font-mono tracking-widest focus:outline-none focus:border-[#10b981]/50 transition placeholder:text-white/20"
+              className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 rounded-xl px-3 sm:px-4 py-3 sm:py-3.5 text-center text-base sm:text-lg font-mono tracking-wider sm:tracking-widest focus:outline-none focus:border-[#10b981]/50 transition placeholder:text-white/20"
               onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
             />
             <button
               onClick={handleUnlock}
-              className="px-7 py-3.5 rounded-xl font-bold text-white transition-all hover:opacity-90 active:scale-95"
+              className="px-5 sm:px-7 py-3 sm:py-3.5 rounded-xl font-bold text-white transition-all hover:opacity-90 active:scale-95 shrink-0"
               style={{
                 background: "linear-gradient(135deg, #10b981, #fbbf24)",
                 boxShadow: "0 0 30px rgba(16,185,129,0.25)",
@@ -151,7 +151,7 @@ export default function Home() {
 
       {/* User's Keys */}
       {user && userKeys.length > 0 && (
-        <section className="max-w-md mx-auto px-6 mb-8">
+        <section className="max-w-md mx-auto px-4 sm:px-6 mb-8">
           <p className="text-xs font-bold tracking-[0.25em] text-white/30 uppercase mb-3">
             購入済みキー
           </p>
@@ -160,13 +160,13 @@ export default function Home() {
               <button
                 key={uk.key}
                 onClick={() => router.push(`/unlock?key=${encodeURIComponent(uk.key)}`)}
-                className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:border-[#10b981]/30 hover:bg-[#10b981]/[0.03] transition"
+                className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 sm:px-4 py-3 hover:border-[#10b981]/30 hover:bg-[#10b981]/[0.03] transition"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-mono text-white/50">{uk.key}</span>
-                  <span className="text-sm font-bold">{uk.venue}</span>
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <span className="text-xs sm:text-sm font-mono text-white/50 shrink-0">{uk.key}</span>
+                  <span className="text-xs sm:text-sm font-bold truncate">{uk.venue}</span>
                 </div>
-                <span className="text-xs text-white/30">
+                <span className="text-[10px] sm:text-xs text-white/30 shrink-0">
                   {uk.date && `${uk.date.slice(4, 6)}/${uk.date.slice(6, 8)}`}
                 </span>
               </button>
@@ -177,7 +177,7 @@ export default function Home() {
 
       {/* Today's Venues */}
       {venues.length > 0 && (
-        <section className="max-w-md mx-auto px-6 mb-12">
+        <section className="max-w-md mx-auto px-4 sm:px-6 mb-12">
           <p className="text-xs font-bold tracking-[0.25em] text-white/30 uppercase mb-4">
             {formattedDate} の開催
           </p>
@@ -196,8 +196,8 @@ export default function Home() {
       )}
 
       {/* Features */}
-      <section className="max-w-lg mx-auto px-6 mb-16">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+      <section className="max-w-lg mx-auto px-4 sm:px-6 mb-16">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="h-10 w-10 rounded-xl border border-white/10 flex items-center justify-center bg-[#10b981]/10">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
@@ -209,21 +209,21 @@ export default function Home() {
             各馬の3着以内に入る可能性を0〜100のスコアで表します。
           </p>
           <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
-              <span className="text-sm text-white/50">分析エンジン</span>
-              <span className="text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">TornadoAI 4基搭載</span>
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 sm:px-4 py-3">
+              <span className="text-xs sm:text-sm text-white/50 shrink-0">エンジン</span>
+              <span className="text-xs sm:text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent text-right">TornadoAI 4基</span>
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
-              <span className="text-sm text-white/50">上位5頭 → 3着以内</span>
-              <span className="text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">理論複勝率 約60%</span>
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 sm:px-4 py-3">
+              <span className="text-xs sm:text-sm text-white/50 shrink-0">上位5頭の複勝率</span>
+              <span className="text-xs sm:text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent text-right">理論値 約60%</span>
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
-              <span className="text-sm text-white/50">ワイド推奨</span>
-              <span className="text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">鉄板・準鉄板・妙味</span>
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 sm:px-4 py-3">
+              <span className="text-xs sm:text-sm text-white/50 shrink-0">ワイド推奨</span>
+              <span className="text-xs sm:text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent text-right">鉄板・準鉄板・妙味</span>
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3">
-              <span className="text-sm text-white/50">対象</span>
-              <span className="text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">地方競馬 毎日全レース</span>
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 sm:px-4 py-3">
+              <span className="text-xs sm:text-sm text-white/50 shrink-0">対象</span>
+              <span className="text-xs sm:text-sm font-black bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent text-right">地方競馬 毎日全レース</span>
             </div>
           </div>
           <p className="text-[11px] text-white/25 mt-4 leading-relaxed">

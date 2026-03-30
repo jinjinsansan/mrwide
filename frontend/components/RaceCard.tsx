@@ -14,7 +14,7 @@ function IndexBar({ value }: { value: number }) {
           ? "from-[#3b82f6] to-[#3b82f6]/60"
           : "from-white/20 to-white/10";
   return (
-    <div className="w-20 h-3 bg-white/[0.03] rounded-full overflow-hidden">
+    <div className="w-14 sm:w-20 h-2.5 sm:h-3 bg-white/[0.03] rounded-full overflow-hidden shrink-0">
       <div
         className={`h-full rounded-full bg-gradient-to-r ${color}`}
         style={{ width: `${width}%` }}
@@ -42,11 +42,11 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) return <span className="w-6 text-right text-sm font-black text-[#fbbf24]">1</span>;
-  if (rank === 2) return <span className="w-6 text-right text-sm font-black text-[#c0c0c0]">2</span>;
-  if (rank === 3) return <span className="w-6 text-right text-sm font-black text-[#cd7f32]">3</span>;
-  if (rank <= 5) return <span className="w-6 text-right text-sm font-bold text-white/80">{rank}</span>;
-  return <span className="w-6 text-right text-xs text-white/30">{rank}</span>;
+  if (rank === 1) return <span className="w-5 text-right text-xs sm:text-sm font-black text-[#fbbf24] shrink-0">1</span>;
+  if (rank === 2) return <span className="w-5 text-right text-xs sm:text-sm font-black text-[#c0c0c0] shrink-0">2</span>;
+  if (rank === 3) return <span className="w-5 text-right text-xs sm:text-sm font-black text-[#cd7f32] shrink-0">3</span>;
+  if (rank <= 5) return <span className="w-5 text-right text-xs sm:text-sm font-bold text-white/80 shrink-0">{rank}</span>;
+  return <span className="w-5 text-right text-[10px] sm:text-xs text-white/30 shrink-0">{rank}</span>;
 }
 
 export default function RaceCard({ race }: { race: RaceData }) {
@@ -59,16 +59,16 @@ export default function RaceCard({ race }: { race: RaceData }) {
         onClick={() => setExpanded(!expanded)}
         className="w-full p-4 flex items-center justify-between hover:bg-white/[0.02] transition"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <span
-            className="font-black text-sm px-2.5 py-1 rounded-lg text-white"
+            className="font-black text-xs sm:text-sm px-2 sm:px-2.5 py-1 rounded-lg text-white shrink-0"
             style={{ background: "linear-gradient(135deg, #10b981, #10b981cc)" }}
           >
             {race.race_number}R
           </span>
-          <div className="text-left">
-            <div className="font-bold text-sm">{race.race_name}</div>
-            <div className="text-xs text-white/30">
+          <div className="text-left min-w-0">
+            <div className="font-bold text-xs sm:text-sm truncate">{race.race_name}</div>
+            <div className="text-[10px] sm:text-xs text-white/30">
               {race.distance} / {race.num_horses}頭
             </div>
           </div>
@@ -96,13 +96,13 @@ export default function RaceCard({ race }: { race: RaceData }) {
             </p>
             <div className="space-y-2">
               {race.top5.map((h) => (
-                <div key={h.horse_number} className="flex items-center gap-2.5">
+                <div key={h.horse_number} className="flex items-center gap-1.5 sm:gap-2.5">
                   <RankBadge rank={h.rank} />
-                  <span className="bg-white/[0.05] text-xs font-mono w-7 text-center rounded py-0.5 border border-white/5">
+                  <span className="bg-white/[0.05] text-[10px] sm:text-xs font-mono w-6 sm:w-7 text-center rounded py-0.5 border border-white/5 shrink-0">
                     {h.horse_number}
                   </span>
-                  <span className="text-sm flex-1 truncate font-medium">{h.horse_name}</span>
-                  <span className="text-sm font-black w-8 text-right">{h.wide_index}</span>
+                  <span className="text-xs sm:text-sm flex-1 truncate font-medium min-w-0">{h.horse_name}</span>
+                  <span className="text-xs sm:text-sm font-black w-7 sm:w-8 text-right shrink-0">{h.wide_index}</span>
                   <IndexBar value={h.wide_index} />
                 </div>
               ))}
@@ -122,18 +122,20 @@ export default function RaceCard({ race }: { race: RaceData }) {
                   return (
                     <div
                       key={i}
-                      className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5"
+                      className="rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5"
                     >
-                      <TypeBadge type={rec.type} />
-                      <span className="text-sm font-black">
-                        {rec.horse_a}-{rec.horse_b}
-                      </span>
-                      <span className="text-xs text-white/30 truncate">
+                      <div className="flex items-center gap-2">
+                        <TypeBadge type={rec.type} />
+                        <span className="text-sm font-black">
+                          {rec.horse_a}-{rec.horse_b}
+                        </span>
+                        <span className="text-xs font-black ml-auto bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent shrink-0">
+                          {rec.confidence}
+                        </span>
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-white/30 mt-1 truncate">
                         {nameA} x {nameB}
-                      </span>
-                      <span className="text-xs font-black ml-auto bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent">
-                        {rec.confidence}
-                      </span>
+                      </div>
                     </div>
                   );
                 })}
@@ -150,16 +152,16 @@ export default function RaceCard({ race }: { race: RaceData }) {
               {race.horses.map((h) => (
                 <div
                   key={h.horse_number}
-                  className={`flex items-center gap-2.5 ${h.rank <= 5 ? "" : "opacity-50"}`}
+                  className={`flex items-center gap-1.5 sm:gap-2.5 ${h.rank <= 5 ? "" : "opacity-50"}`}
                 >
                   <RankBadge rank={h.rank} />
-                  <span className="bg-white/[0.05] text-xs font-mono w-7 text-center rounded py-0.5 border border-white/5">
+                  <span className="bg-white/[0.05] text-[10px] sm:text-xs font-mono w-6 sm:w-7 text-center rounded py-0.5 border border-white/5 shrink-0">
                     {h.horse_number}
                   </span>
-                  <span className={`flex-1 truncate ${h.rank <= 5 ? "text-sm font-medium" : "text-xs"}`}>
+                  <span className={`flex-1 truncate min-w-0 ${h.rank <= 5 ? "text-xs sm:text-sm font-medium" : "text-[10px] sm:text-xs"}`}>
                     {h.horse_name}
                   </span>
-                  <span className={`w-8 text-right ${h.rank <= 5 ? "text-sm font-black" : "text-xs"}`}>
+                  <span className={`w-7 sm:w-8 text-right shrink-0 ${h.rank <= 5 ? "text-xs sm:text-sm font-black" : "text-[10px] sm:text-xs"}`}>
                     {h.wide_index}
                   </span>
                   <IndexBar value={h.wide_index} />
