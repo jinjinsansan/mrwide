@@ -2,27 +2,51 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getVenues, VenueInfo } from "@/lib/api";
+import { getVenues, getMe, getLineLoginUrl, clearToken, VenueInfo, UserKey } from "@/lib/api";
 
 export default function Home() {
   const [venues, setVenues] = useState<VenueInfo[]>([]);
   const [date, setDate] = useState("");
   const [key, setKey] = useState("");
+  const [user, setUser] = useState<{ display_name: string; picture_url: string } | null>(null);
+  const [userKeys, setUserKeys] = useState<UserKey[]>([]);
+  const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    getVenues()
-      .then((res) => {
-        setVenues(res.venues);
-        setDate(res.date);
-      })
-      .catch(() => {});
+    getVenues().then((res) => {
+      setVenues(res.venues);
+      setDate(res.date);
+    }).catch(() => {});
+
+    getMe().then((res) => {
+      if (res.authenticated && res.user) {
+        setUser(res.user);
+        setUserKeys(res.keys || []);
+      }
+      setAuthChecked(true);
+    }).catch(() => setAuthChecked(true));
   }, []);
 
   const handleUnlock = () => {
-    if (key.trim()) {
+    if (!key.trim()) return;
+    if (!user) {
+      localStorage.setItem("mrwide_pending_key", key.trim());
+      handleLineLogin();
+    } else {
       router.push(`/unlock?key=${encodeURIComponent(key.trim())}`);
     }
+  };
+
+  const handleLineLogin = async () => {
+    const { url } = await getLineLoginUrl();
+    window.location.href = url;
+  };
+
+  const handleLogout = () => {
+    clearToken();
+    setUser(null);
+    setUserKeys([]);
   };
 
   const formattedDate = date
@@ -46,21 +70,26 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <a
-              href="https://www.tornadeai.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-white/30 hover:text-white transition"
-            >
+            {authChecked && user ? (
+              <div className="flex items-center gap-2">
+                {user.picture_url && (
+                  <img src={user.picture_url} alt="" className="w-7 h-7 rounded-full" />
+                )}
+                <span className="text-xs text-white/50">{user.display_name}</span>
+                <button onClick={handleLogout} className="text-xs text-white/30 hover:text-white transition ml-1">
+                  ログアウト
+                </button>
+              </div>
+            ) : authChecked ? (
+              <button
+                onClick={handleLineLogin}
+                className="text-xs px-3 py-1.5 rounded-full bg-[#06C755] text-white font-bold hover:opacity-90 transition"
+              >
+                LINEでログイン
+              </button>
+            ) : null}
+            <a href="https://www.tornadeai.com" target="_blank" rel="noopener noreferrer" className="text-xs text-white/30 hover:text-white transition">
               TornadoAI
-            </a>
-            <a
-              href="https://x.com/tekkyu_algo"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-white/30 hover:text-white transition"
-            >
-              @tekkyu_algo
             </a>
           </div>
         </div>
@@ -85,7 +114,7 @@ export default function Home() {
       </section>
 
       {/* Key Input */}
-      <section className="max-w-md mx-auto px-6 mb-12">
+      <section className="max-w-md mx-auto px-6 mb-8">
         <div className="rounded-2xl border-2 border-[#10b981]/20 bg-[#10b981]/[0.03] p-6 backdrop-blur-sm">
           <h2 className="text-lg font-black text-center mb-4">閲覧キーを入力</h2>
           <div className="flex gap-2">
@@ -112,8 +141,39 @@ export default function Home() {
           <p className="text-xs text-white/30 mt-3 text-center">
             アクセスキーを入力してください
           </p>
+          {!user && (
+            <p className="text-xs text-white/25 mt-1 text-center">
+              初回利用時はLINE認証が必要です
+            </p>
+          )}
         </div>
       </section>
+
+      {/* User's Keys */}
+      {user && userKeys.length > 0 && (
+        <section className="max-w-md mx-auto px-6 mb-8">
+          <p className="text-xs font-bold tracking-[0.25em] text-white/30 uppercase mb-3">
+            購入済みキー
+          </p>
+          <div className="space-y-2">
+            {userKeys.map((uk) => (
+              <button
+                key={uk.key}
+                onClick={() => router.push(`/unlock?key=${encodeURIComponent(uk.key)}`)}
+                className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 hover:border-[#10b981]/30 hover:bg-[#10b981]/[0.03] transition"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-mono text-white/50">{uk.key}</span>
+                  <span className="text-sm font-bold">{uk.venue}</span>
+                </div>
+                <span className="text-xs text-white/30">
+                  {uk.date && `${uk.date.slice(4, 6)}/${uk.date.slice(6, 8)}`}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Today's Venues */}
       {venues.length > 0 && (
