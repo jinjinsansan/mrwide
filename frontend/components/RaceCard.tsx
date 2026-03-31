@@ -140,13 +140,10 @@ export default function RaceCard({ race }: { race: RaceData }) {
                           {rec.horse_a}-{rec.horse_b}
                         </span>
                         {rec.pair_hit_rate != null && (
-                          <span className="text-[10px] sm:text-xs text-[#10b981]/70 font-medium shrink-0">
+                          <span className="text-[10px] sm:text-xs font-bold ml-auto bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent shrink-0">
                             的中率{rec.pair_hit_rate}%
                           </span>
                         )}
-                        <span className="text-xs font-black ml-auto bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent shrink-0">
-                          {rec.confidence}
-                        </span>
                       </div>
                       <div className="text-[10px] sm:text-xs text-white/30 mt-1 truncate">
                         {nameA} x {nameB}
