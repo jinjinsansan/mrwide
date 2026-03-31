@@ -367,7 +367,7 @@ def _load_tickets() -> dict:
     if os.path.exists(TICKETS_PATH):
         with open(TICKETS_PATH, 'r') as f:
             return json.load(f)
-    return {"seq": 0, "tickets": {}}
+    return {"seq": 10000, "tickets": {}}
 
 
 def _save_tickets(data: dict):
