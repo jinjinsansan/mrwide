@@ -8,12 +8,12 @@ import RaceCard from "@/components/RaceCard";
 export default function Home() {
   const [venues, setVenues] = useState<VenueInfo[]>([]);
   const [date, setDate] = useState("");
-  const [key, setKey] = useState("");
   const [user, setUser] = useState<{ display_name: string; picture_url: string } | null>(null);
   const [userKeys, setUserKeys] = useState<UserKey[]>([]);
   const [authChecked, setAuthChecked] = useState(false);
   const [freeVenues, setFreeVenues] = useState<VenueData[]>([]);
   const [freeCount, setFreeCount] = useState(0);
+  const [venueKey, setVenueKey] = useState<Record<string, string>>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -36,13 +36,14 @@ export default function Home() {
     }).catch(() => setAuthChecked(true));
   }, []);
 
-  const handleUnlock = () => {
-    if (!key.trim()) return;
+  const handleUnlockVenue = (venue: string) => {
+    const key = venueKey[venue]?.trim();
+    if (!key) return;
     if (!user) {
-      localStorage.setItem("mrwide_pending_key", key.trim());
+      localStorage.setItem("mrwide_pending_key", key);
       handleLineLogin();
     } else {
-      router.push(`/unlock?key=${encodeURIComponent(key.trim())}`);
+      router.push(`/unlock?key=${encodeURIComponent(key)}`);
     }
   };
 
@@ -60,6 +61,12 @@ export default function Home() {
   const formattedDate = date
     ? `${date.slice(0, 4)}/${date.slice(4, 6)}/${date.slice(6, 8)}`
     : "";
+
+  // 会場ごとに購入済みキーがあるかチェック
+  const userKeyMap: Record<string, UserKey> = {};
+  for (const uk of userKeys) {
+    if (uk.date === date) userKeyMap[uk.venue] = uk;
+  }
 
   return (
     <div className="min-h-screen">
@@ -121,17 +128,21 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Free Races */}
-      {freeCount > 0 && (
-        <section className="max-w-lg mx-auto px-4 sm:px-6 mb-10">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-6 w-6 rounded-md bg-[#fbbf24]/20 flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-            </div>
-            <p className="text-xs font-bold tracking-[0.15em] text-[#fbbf24]/80 uppercase">
-              本日の無料公開 — {freeCount}レース
-            </p>
+      {/* ===== 本日の無料ワイド ===== */}
+      <section className="max-w-lg mx-auto px-4 sm:px-6 mb-12">
+        <div className="flex items-center gap-2 mb-5">
+          <div className="h-7 w-7 rounded-lg bg-[#fbbf24]/20 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
           </div>
+          <h2 className="text-base sm:text-lg font-black">本日の無料ワイド</h2>
+          {freeCount > 0 && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fbbf24]/20 text-[#fbbf24]">
+              {freeCount}レース公開中
+            </span>
+          )}
+        </div>
+
+        {freeCount > 0 ? (
           <div className="space-y-6">
             {freeVenues.map((v) => (
               <div key={v.venue}>
@@ -144,92 +155,82 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </section>
-      )}
-
-      {/* Key Input */}
-      <section className="max-w-md mx-auto px-4 sm:px-6 mb-8">
-        <div className="rounded-2xl border-2 border-[#10b981]/20 bg-[#10b981]/[0.03] p-4 sm:p-6 backdrop-blur-sm">
-          <h2 className="text-base sm:text-lg font-black text-center mb-4">閲覧キーを入力</h2>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={key}
-              onChange={(e) => setKey(e.target.value.toUpperCase())}
-              placeholder=""
-              maxLength={8}
-              className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 rounded-xl px-3 sm:px-4 py-3 sm:py-3.5 text-center text-base sm:text-lg font-mono tracking-wider sm:tracking-widest focus:outline-none focus:border-[#10b981]/50 transition placeholder:text-white/20"
-              onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-            />
-            <button
-              onClick={handleUnlock}
-              className="px-5 sm:px-7 py-3 sm:py-3.5 rounded-xl font-bold text-white transition-all hover:opacity-90 active:scale-95 shrink-0"
-              style={{
-                background: "linear-gradient(135deg, #10b981, #fbbf24)",
-                boxShadow: "0 0 30px rgba(16,185,129,0.25)",
-              }}
-            >
-              開く
-            </button>
+        ) : (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center">
+            <p className="text-sm text-white/40">本日の無料公開はありません</p>
+            <p className="text-xs text-white/25 mt-1">毎日一部レースを無料で公開しています</p>
           </div>
-          <p className="text-xs text-white/30 mt-3 text-center">
-            アクセスキーを入力してください
-          </p>
+        )}
+      </section>
+
+      {/* ===== 今日の開催 + キー入力 ===== */}
+      {venues.length > 0 && (
+        <section className="max-w-lg mx-auto px-4 sm:px-6 mb-12">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="h-7 w-7 rounded-lg bg-[#10b981]/20 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+            </div>
+            <h2 className="text-base sm:text-lg font-black">{formattedDate} の開催</h2>
+          </div>
+
+          <div className="space-y-3">
+            {venues.map((v) => {
+              const owned = userKeyMap[v.venue];
+              return (
+                <div
+                  key={v.venue}
+                  className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5 transition hover:border-[#10b981]/20"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl font-black">{v.venue}</span>
+                      <span className="text-sm text-white/40">{v.race_count}R</span>
+                    </div>
+                    {owned ? (
+                      <button
+                        onClick={() => router.push(`/unlock?key=${encodeURIComponent(owned.key)}`)}
+                        className="text-xs font-bold px-3 py-1.5 rounded-full transition-all hover:opacity-90 active:scale-95 text-white"
+                        style={{ background: "linear-gradient(135deg, #10b981, #fbbf24)" }}
+                      >
+                        解放済み — 見る
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {!owned && (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={venueKey[v.venue] || ""}
+                        onChange={(e) => setVenueKey({ ...venueKey, [v.venue]: e.target.value.toUpperCase() })}
+                        placeholder="アクセスキー"
+                        maxLength={8}
+                        className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2.5 text-center text-sm font-mono tracking-wider focus:outline-none focus:border-[#10b981]/50 transition placeholder:text-white/20"
+                        onKeyDown={(e) => e.key === "Enter" && handleUnlockVenue(v.venue)}
+                      />
+                      <button
+                        onClick={() => handleUnlockVenue(v.venue)}
+                        className="px-4 py-2.5 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 active:scale-95 shrink-0"
+                        style={{ background: "linear-gradient(135deg, #10b981, #10b981cc)" }}
+                      >
+                        解放
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
           {!user && (
-            <p className="text-xs text-white/25 mt-1 text-center">
+            <p className="text-xs text-white/25 mt-3 text-center">
               初回利用時はLINE認証が必要です
             </p>
           )}
-        </div>
-      </section>
-
-      {/* User's Keys */}
-      {user && userKeys.length > 0 && (
-        <section className="max-w-md mx-auto px-4 sm:px-6 mb-8">
-          <p className="text-xs font-bold tracking-[0.25em] text-white/30 uppercase mb-3">
-            購入済みキー
-          </p>
-          <div className="space-y-2">
-            {userKeys.map((uk) => (
-              <button
-                key={uk.key}
-                onClick={() => router.push(`/unlock?key=${encodeURIComponent(uk.key)}`)}
-                className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 sm:px-4 py-3 hover:border-[#10b981]/30 hover:bg-[#10b981]/[0.03] transition"
-              >
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <span className="text-xs sm:text-sm font-mono text-white/50 shrink-0">{uk.key}</span>
-                  <span className="text-xs sm:text-sm font-bold truncate">{uk.venue}</span>
-                </div>
-                <span className="text-[10px] sm:text-xs text-white/30 shrink-0">
-                  {uk.date && `${uk.date.slice(4, 6)}/${uk.date.slice(6, 8)}`}
-                </span>
-              </button>
-            ))}
-          </div>
         </section>
       )}
 
-      {/* Today's Venues */}
-      {venues.length > 0 && (
-        <section className="max-w-md mx-auto px-4 sm:px-6 mb-12">
-          <p className="text-xs font-bold tracking-[0.25em] text-white/30 uppercase mb-4">
-            {formattedDate} の開催
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {venues.map((v) => (
-              <div
-                key={v.venue}
-                className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-center transition hover:border-[#10b981]/30 hover:bg-[#10b981]/[0.03]"
-              >
-                <div className="text-xl font-black">{v.venue}</div>
-                <div className="text-sm text-white/40 mt-1">{v.race_count}R</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Features */}
+      {/* ===== Wide指数とは ===== */}
       <section className="max-w-lg mx-auto px-4 sm:px-6 mb-16">
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-5">
