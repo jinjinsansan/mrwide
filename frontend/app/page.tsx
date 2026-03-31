@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getVenues, getMe, getLineLoginUrl, clearToken, VenueInfo, UserKey } from "@/lib/api";
+import { getVenues, getMe, getLineLoginUrl, clearToken, getFreeRaces, VenueInfo, VenueData, UserKey } from "@/lib/api";
+import RaceCard from "@/components/RaceCard";
 
 export default function Home() {
   const [venues, setVenues] = useState<VenueInfo[]>([]);
@@ -11,12 +12,19 @@ export default function Home() {
   const [user, setUser] = useState<{ display_name: string; picture_url: string } | null>(null);
   const [userKeys, setUserKeys] = useState<UserKey[]>([]);
   const [authChecked, setAuthChecked] = useState(false);
+  const [freeVenues, setFreeVenues] = useState<VenueData[]>([]);
+  const [freeCount, setFreeCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
     getVenues().then((res) => {
       setVenues(res.venues);
       setDate(res.date);
+    }).catch(() => {});
+
+    getFreeRaces().then((res) => {
+      setFreeVenues(res.venues);
+      setFreeCount(res.free_count);
     }).catch(() => {});
 
     getMe().then((res) => {
@@ -112,6 +120,32 @@ export default function Home() {
           鉄板・準鉄板・妙味のワイド推奨を毎日お届けします。
         </p>
       </section>
+
+      {/* Free Races */}
+      {freeCount > 0 && (
+        <section className="max-w-lg mx-auto px-4 sm:px-6 mb-10">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-6 w-6 rounded-md bg-[#fbbf24]/20 flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+            </div>
+            <p className="text-xs font-bold tracking-[0.15em] text-[#fbbf24]/80 uppercase">
+              本日の無料公開 — {freeCount}レース
+            </p>
+          </div>
+          <div className="space-y-6">
+            {freeVenues.map((v) => (
+              <div key={v.venue}>
+                <p className="text-sm font-black text-white/70 mb-2 pl-1">{v.venue}</p>
+                <div className="space-y-3">
+                  {v.races.map((race) => (
+                    <RaceCard key={race.race_id} race={race} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Key Input */}
       <section className="max-w-md mx-auto px-4 sm:px-6 mb-8">

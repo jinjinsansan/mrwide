@@ -216,6 +216,11 @@ def telegram_webhook():
     if not msg:
         return jsonify({"ok": True})
 
+    # Mr.Wide専用コマンドはそのまま転送
+    if msg.startswith("/free"):
+        result = _forward_to_mrwide(update)
+        return jsonify(result)
+
     if msg.startswith("/resolve"):
         parts = msg.split(maxsplit=2)
         if len(parts) < 3:

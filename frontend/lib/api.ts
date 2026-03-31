@@ -93,6 +93,18 @@ export async function getVenues(date?: string): Promise<{ date: string; venues: 
   return res.json();
 }
 
+export interface FreeRacesResponse {
+  date: string;
+  venues: VenueData[];
+  free_count: number;
+}
+
+export async function getFreeRaces(date?: string): Promise<FreeRacesResponse> {
+  const params = date ? `?date=${date}` : "";
+  const res = await fetch(`${API_BASE}/api/free-races${params}`);
+  return res.json();
+}
+
 export async function getLineLoginUrl(redirectPath?: string): Promise<{ url: string; state: string }> {
   const params = redirectPath ? `?redirect_path=${encodeURIComponent(redirectPath)}` : "";
   const res = await fetch(`${API_BASE}/api/auth/line-url${params}`);

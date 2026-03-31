@@ -58,6 +58,8 @@ JST = timezone(timedelta(hours=9))
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+FREE_RACES_PATH = os.path.join(DATA_DIR, "free_races.json")
+
 # In-memory session store (token -> user_info)
 _sessions: dict[str, dict] = {}
 
@@ -147,6 +149,19 @@ def _get_user_keys(line_user_id: str) -> list[dict]:
     return keys
 
 
+def _load_free_races() -> dict:
+    """無料レース設定を読み込み。{date: {venue: [race_numbers]}}"""
+    if os.path.exists(FREE_RACES_PATH):
+        with open(FREE_RACES_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+
+def _save_free_races(data: dict):
+    with open(FREE_RACES_PATH, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
 # --- Models ---
 
 class UnlockRequest(BaseModel):
@@ -194,6 +209,42 @@ def get_venues(date: str | None = None):
             "has_key": bool(v.get("access_key")),
         })
     return {"date": index.get("date", date_str), "venues": venues}
+
+
+@app.get("/api/free-races")
+def get_free_races(date: str | None = None):
+    """無料公開レースのデータを返す（認証不要）"""
+    date_str = date or datetime.now().strftime("%Y%m%d")
+    free_config = _load_free_races()
+    free_venues = free_config.get(date_str, {})
+
+    if not free_venues:
+        return {"date": date_str, "venues": [], "free_count": 0}
+
+    index = _load_index(date_str)
+    if not index:
+        return {"date": date_str, "venues": [], "free_count": 0}
+
+    result_venues = []
+    total_free = 0
+    for venue_data in index.get("venues", []):
+        venue_name = venue_data["venue"]
+        free_numbers = free_venues.get(venue_name, [])
+        if not free_numbers:
+            continue
+        free_race_list = []
+        for race in venue_data.get("races", []):
+            if race["race_number"] in free_numbers:
+                free_race_list.append(race)
+        if free_race_list:
+            result_venues.append({
+                "venue": venue_name,
+                "race_count": len(free_race_list),
+                "races": free_race_list,
+            })
+            total_free += len(free_race_list)
+
+    return {"date": date_str, "venues": result_venues, "free_count": total_free}
 
 
 @app.get("/api/auth/line-url")
@@ -503,6 +554,52 @@ async def telegram_webhook(request: Request):
     msg = (update.get("message") or {}).get("text") or ""
     msg = str(msg).strip()
     if not msg:
+        return {"ok": True}
+
+    if msg.startswith("/free"):
+        parts = msg.split()
+        # /free list → 今日の無料レース一覧
+        if len(parts) >= 2 and parts[1] == "list":
+            date_str = parts[2] if len(parts) >= 3 else datetime.now(JST).strftime("%Y%m%d")
+            free_config = _load_free_races()
+            venues = free_config.get(date_str, {})
+            if not venues:
+                _telegram_send(f"📋 {date_str}: 無料レースなし")
+            else:
+                lines = [f"📋 {date_str} 無料レース"]
+                for v, nums in venues.items():
+                    lines.append(f"  {v}: {','.join(str(n) for n in sorted(nums))}R")
+                _telegram_send("\n".join(lines))
+            return {"ok": True}
+
+        # /free clear 20260401 → 全解除
+        if len(parts) >= 3 and parts[1] == "clear":
+            date_str = parts[2]
+            free_config = _load_free_races()
+            if date_str in free_config:
+                del free_config[date_str]
+                _save_free_races(free_config)
+            _telegram_send(f"🗑 {date_str} の無料レースを全解除しました")
+            return {"ok": True}
+
+        # /free 20260401 園田 1,5,11
+        if len(parts) >= 4:
+            date_str = parts[1]
+            venue = parts[2]
+            try:
+                race_nums = [int(n) for n in parts[3].split(",")]
+            except ValueError:
+                _telegram_send("❌ レース番号はカンマ区切りの数字で: /free 20260401 園田 1,5,11")
+                return {"ok": True}
+            free_config = _load_free_races()
+            if date_str not in free_config:
+                free_config[date_str] = {}
+            free_config[date_str][venue] = race_nums
+            _save_free_races(free_config)
+            _telegram_send(f"✅ {date_str} {venue} {','.join(str(n) for n in race_nums)}R を無料公開に設定")
+            return {"ok": True}
+
+        _telegram_send("使い方:\n/free 20260401 園田 1,5,11\n/free list [日付]\n/free clear 20260401")
         return {"ok": True}
 
     if msg.startswith("/resolve"):
