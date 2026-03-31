@@ -31,6 +31,9 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+COMMENT_MODEL = "claude-haiku-4-5"
+
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.join(SCRIPTS_DIR, '..')
 OUTPUT_DIR = os.path.join(PROJECT_DIR, 'data')
@@ -241,6 +244,63 @@ def generate_wide_recommendations(indexed_horses: list[dict], top_n: int = 5) ->
     return recommendations
 
 
+def generate_comments(race_info: dict, recommendations: list[dict], indexed_horses: list[dict]) -> dict:
+    """Claude APIで各推奨ワイドに一言コメントを生成。キーは "horse_a-horse_b" """
+    if not ANTHROPIC_API_KEY or not recommendations:
+        return {}
+
+    name_map = {h["horse_number"]: h.get("horse_name", "?") for h in indexed_horses}
+    prob_map = {h["horse_number"]: h.get("ai_place_prob", 0) for h in indexed_horses}
+
+    rec_lines = []
+    for r in recommendations[:6]:
+        a, b = r["horse_a"], r["horse_b"]
+        rec_lines.append(
+            f"{r['label']} {a}番{name_map.get(a,'')} x {b}番{name_map.get(b,'')} "
+            f"AI複勝率{prob_map.get(a,0)}%/{prob_map.get(b,0)}% 的中率{r.get('pair_hit_rate',0)}%"
+        )
+
+    prompt = (
+        f"競馬ワイド馬券の推奨コメントを書いてください。\n"
+        f"レース: {race_info.get('race_name','')} {race_info.get('distance','')} {race_info.get('num_horses',0)}頭\n"
+        f"推奨組み合わせ:\n" + "\n".join(rec_lines) + "\n\n"
+        f"各組み合わせに対して15〜25文字の一言コメントを書いてください。"
+        f"ワイド馬券(3着以内に2頭)の視点で、買いたくなるような簡潔な表現で。"
+        f"絵文字は使わないでください。\n"
+        f"JSON形式で返してください: {{\"horse_a-horse_b\": \"コメント\", ...}}\n"
+        f"JSONのみ出力。説明不要。"
+    )
+
+    try:
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": COMMENT_MODEL,
+                "max_tokens": 300,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            logger.warning(f"Comment API error: {resp.status_code}")
+            return {}
+        text = resp.json()["content"][0]["text"].strip()
+        # JSONブロックを抽出
+        if "```" in text:
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return json.loads(text)
+    except Exception as e:
+        logger.warning(f"Comment generation failed: {e}")
+        return {}
+
+
 def generate_access_key() -> str:
     """8桁の閲覧キーを生成 (MW + 6桁英数字)"""
     chars = string.ascii_uppercase + string.digits
@@ -287,6 +347,17 @@ def process_venue(venue: str, races: list[dict], api_url: str) -> dict:
             item["jockey"] = jockey_map.get(item["horse_number"], "")
 
         recommendations = generate_wide_recommendations(indexed)
+
+        # AIコメント生成
+        race_info = {
+            "race_name": race.get("race_name", ""),
+            "distance": race.get("distance", ""),
+            "num_horses": num_horses,
+        }
+        comments = generate_comments(race_info, recommendations, indexed)
+        for rec in recommendations:
+            key = f"{rec['horse_a']}-{rec['horse_b']}"
+            rec["comment"] = comments.get(key, "")
 
         race_data = {
             "race_id": race_id,

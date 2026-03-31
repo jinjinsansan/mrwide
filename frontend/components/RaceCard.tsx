@@ -151,6 +151,11 @@ export default function RaceCard({ race }: { race: RaceData }) {
                       <div className="text-[10px] sm:text-xs text-white/30 mt-1 truncate">
                         {nameA} x {nameB}
                       </div>
+                      {rec.comment && (
+                        <p className="text-[10px] sm:text-xs text-white/50 mt-1.5 italic leading-relaxed">
+                          {rec.comment}
+                        </p>
+                      )}
                     </div>
                   );
                 })}

@@ -45,6 +45,7 @@ export interface WideRecommendation {
   horse_b: number;
   confidence: number;
   pair_hit_rate?: number;
+  comment?: string;
 }
 
 export interface RaceData {

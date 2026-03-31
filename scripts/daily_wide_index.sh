@@ -27,6 +27,11 @@ if [ ! -f "$PREFETCH" ]; then
     exit 1
 fi
 
+# ANTHROPIC_API_KEY読み込み (AIコメント生成用)
+if [ -f /opt/dlogic/linebot/.env.local ]; then
+    export $(grep '^ANTHROPIC_API_KEY=' /opt/dlogic/linebot/.env.local | xargs)
+fi
+
 # Wide指数生成
 cd "$MRWIDE_DIR"
 OUTPUT=$($DLOGIC_VENV scripts/generate_wide_index.py "$TOMORROW" --api http://localhost:8000 2>&1)
