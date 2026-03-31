@@ -91,9 +91,14 @@ export default function RaceCard({ race }: { race: RaceData }) {
         <div className="px-4 pb-5 border-t border-white/5">
           {/* Top 5 */}
           <div className="mt-4 mb-5">
-            <p className="text-[10px] font-bold tracking-[0.2em] text-white/30 uppercase mb-3">
-              Wide指数 TOP 5
-            </p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold tracking-[0.2em] text-white/30 uppercase">
+                Wide指数 TOP 5
+              </p>
+              <p className="text-[9px] text-[#10b981]/40 font-medium">
+                AI複勝率
+              </p>
+            </div>
             <div className="space-y-2">
               {race.top5.map((h) => (
                 <div key={h.horse_number} className="flex items-center gap-1.5 sm:gap-2.5">
@@ -103,6 +108,11 @@ export default function RaceCard({ race }: { race: RaceData }) {
                   </span>
                   <span className="text-xs sm:text-sm flex-1 truncate font-medium min-w-0">{h.horse_name}</span>
                   <span className="text-xs sm:text-sm font-black w-7 sm:w-8 text-right shrink-0">{h.wide_index}</span>
+                  {h.ai_place_prob != null && (
+                    <span className="text-[10px] sm:text-xs text-[#10b981]/80 w-10 sm:w-12 text-right shrink-0 font-medium">
+                      {h.ai_place_prob}%
+                    </span>
+                  )}
                   <IndexBar value={h.wide_index} />
                 </div>
               ))}
@@ -129,6 +139,11 @@ export default function RaceCard({ race }: { race: RaceData }) {
                         <span className="text-sm font-black">
                           {rec.horse_a}-{rec.horse_b}
                         </span>
+                        {rec.pair_hit_rate != null && (
+                          <span className="text-[10px] sm:text-xs text-[#10b981]/70 font-medium shrink-0">
+                            的中率{rec.pair_hit_rate}%
+                          </span>
+                        )}
                         <span className="text-xs font-black ml-auto bg-gradient-to-r from-[#10b981] to-[#fbbf24] bg-clip-text text-transparent shrink-0">
                           {rec.confidence}
                         </span>
@@ -164,6 +179,11 @@ export default function RaceCard({ race }: { race: RaceData }) {
                   <span className={`w-7 sm:w-8 text-right shrink-0 ${h.rank <= 5 ? "text-xs sm:text-sm font-black" : "text-[10px] sm:text-xs"}`}>
                     {h.wide_index}
                   </span>
+                  {h.ai_place_prob != null && (
+                    <span className={`w-10 sm:w-12 text-right shrink-0 text-[#10b981]/80 ${h.rank <= 5 ? "text-[10px] sm:text-xs font-medium" : "text-[9px] sm:text-[10px]"}`}>
+                      {h.ai_place_prob}%
+                    </span>
+                  )}
                   <IndexBar value={h.wide_index} />
                 </div>
               ))}

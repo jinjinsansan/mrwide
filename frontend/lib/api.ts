@@ -34,6 +34,7 @@ export interface Horse {
   horse_name: string;
   jockey: string;
   wide_index: number;
+  ai_place_prob?: number;
   rank: number;
 }
 
@@ -43,6 +44,7 @@ export interface WideRecommendation {
   horse_a: number;
   horse_b: number;
   confidence: number;
+  pair_hit_rate?: number;
 }
 
 export interface RaceData {

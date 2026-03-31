@@ -106,9 +106,9 @@ def call_prediction_api(race: dict, api_url: str) -> dict | None:
 
 
 def calculate_wide_index(prediction_data: dict, num_horses: int, horse_numbers: list) -> list[dict]:
-    """4エンジンの予測結果からWide指数を算出
+    """4エンジンの予測結果からWide指数 + AI複勝率を算出
 
-    Returns: [{horse_number, wide_index, rank}, ...] sorted by wide_index desc
+    Returns: [{horse_number, wide_index, ai_place_prob, rank}, ...] sorted by wide_index desc
     """
     scores = {hn: 0.0 for hn in horse_numbers}
 
@@ -137,6 +137,16 @@ def calculate_wide_index(prediction_data: dict, num_horses: int, horse_numbers: 
             "wide_index": wide_index,
         })
 
+    # AI複勝率: Wide指数を合計300%(7頭以下は200%)に正規化
+    target_sum = 200.0 if num_horses <= 7 else 300.0
+    index_sum = sum(item["wide_index"] for item in result)
+    for item in result:
+        if index_sum > 0:
+            prob = item["wide_index"] / index_sum * target_sum
+            item["ai_place_prob"] = round(min(prob, 85.0), 1)
+        else:
+            item["ai_place_prob"] = 0.0
+
     result.sort(key=lambda x: x["wide_index"], reverse=True)
     for i, item in enumerate(result):
         item["rank"] = i + 1
@@ -144,47 +154,87 @@ def calculate_wide_index(prediction_data: dict, num_horses: int, horse_numbers: 
     return result
 
 
+def _calc_pair_hit_rate(prob_a: float, prob_b: float, num_horses: int) -> float:
+    """2頭が両方3着以内に入る確率(ワイド的中率)を近似計算
+    
+    3着枠は3つ。人気馬同士は枠を食い合うため補正。
+    P(A∩B in top3) ≒ P(A) × P(B) × 補正係数
+    補正係数: 3着枠3つのうち2つを占めるので (3-1)/(N-1) で調整
+    """
+    if num_horses < 2:
+        return 0.0
+    pa = prob_a / 100.0
+    pb = prob_b / 100.0
+    # 条件付き確率: Aが3着内にいる場合、残り(N-1)頭で2枠を争う
+    correction = min(1.0, 2.0 / max(1, num_horses - 1))
+    raw = pa * pb * correction / (3.0 / max(1, num_horses)) * (3.0 / max(1, num_horses))
+    # 簡易近似: pa * pb を基本に、枠の競合を反映
+    pair_prob = pa * pb * (1.0 + correction) * 0.85
+    return round(min(pair_prob * 100, 95.0), 1)
+
+
 def generate_wide_recommendations(indexed_horses: list[dict], top_n: int = 5) -> list[dict]:
-    """上位馬からワイド推奨組み合わせを生成"""
+    """上位馬からワイド推奨組み合わせを生成(ペア的中率付き)"""
     top = indexed_horses[:top_n]
     if len(top) < 2:
         return []
+
+    num_horses = len(indexed_horses)
+    prob_map = {h["horse_number"]: h.get("ai_place_prob", 0) for h in indexed_horses}
 
     recommendations = []
 
     # 鉄板: 1位×2位
     if len(top) >= 2:
         combined = top[0]["wide_index"] + top[1]["wide_index"]
+        pair_rate = _calc_pair_hit_rate(
+            prob_map.get(top[0]["horse_number"], 0),
+            prob_map.get(top[1]["horse_number"], 0),
+            num_horses,
+        )
         recommendations.append({
             "type": "teppan",
             "label": "鉄板",
             "horse_a": top[0]["horse_number"],
             "horse_b": top[1]["horse_number"],
             "confidence": min(99, round(combined / 2)),
+            "pair_hit_rate": pair_rate,
         })
 
     # 準鉄板: 1位×3位, 2位×3位
     if len(top) >= 3:
         for i, j in [(0, 2), (1, 2)]:
             combined = top[i]["wide_index"] + top[j]["wide_index"]
+            pair_rate = _calc_pair_hit_rate(
+                prob_map.get(top[i]["horse_number"], 0),
+                prob_map.get(top[j]["horse_number"], 0),
+                num_horses,
+            )
             recommendations.append({
                 "type": "junTeppan",
                 "label": "準鉄板",
                 "horse_a": top[i]["horse_number"],
                 "horse_b": top[j]["horse_number"],
                 "confidence": min(99, round(combined / 2)),
+                "pair_hit_rate": pair_rate,
             })
 
     # 妙味: 上位×4-5位
     for i in range(min(2, len(top))):
         for j in range(3, min(top_n, len(top))):
             combined = top[i]["wide_index"] + top[j]["wide_index"]
+            pair_rate = _calc_pair_hit_rate(
+                prob_map.get(top[i]["horse_number"], 0),
+                prob_map.get(top[j]["horse_number"], 0),
+                num_horses,
+            )
             recommendations.append({
                 "type": "myomi",
                 "label": "妙味",
                 "horse_a": top[i]["horse_number"],
                 "horse_b": top[j]["horse_number"],
                 "confidence": min(99, round(combined / 2)),
+                "pair_hit_rate": pair_rate,
             })
 
     recommendations.sort(key=lambda x: x["confidence"], reverse=True)
